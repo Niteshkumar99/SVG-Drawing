@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>SVG Drawing Tool</title>
+
+<style>
+  body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #f0f0f0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  h1 { margin: 10px; }
+
+  .toolbar {
+    margin-bottom: 10px;
+  }
+
+  button {
+    padding: 6px 10px;
+    margin-right: 5px;
+    cursor: pointer;
+  }
+
+  svg {
+    border: 2px solid black;
+    width: 90vw;
+    height: 60vh;
+    background: white;
+    touch-action: none;
+  }
+</style>
+</head>
+<body>
+
+<h1> SVG Drawing Tool</h1>
+
+<div class="toolbar">
+  Color: <input type="color" id="colorPicker" value="#000000">
+  <button onclick="setTool('pen')">✏ Pen</button>
+  <button onclick="setTool('rect')">⬛ Rectangle</button>
+  <button onclick="setTool('circle')">⚪ Circle</button>
+  <button id="undoBtn">Undo</button>
+</div>
+
+<svg id="canvas"></svg>
+
+<script>
+const svg = document.getElementById("canvas");
+const colorPicker = document.getElementById("colorPicker");
+const undoBtn = document.getElementById("undoBtn");
+
+let drawing = false;
+let currentElement;
+let tool = "pen";
+let startX, startY;
+let elements = [];
+
+// Change Tool
+function setTool(selectedTool) {
+  tool = selectedTool;
+}
+
+// Convert mouse to SVG coordinates
+function getSVGPoint(event) {
+  const point = svg.createSVGPoint();
+  point.x = event.clientX;
+  point.y = event.clientY;
+  return point.matrixTransform(svg.getScreenCTM().inverse());
+}
+
+// Mouse Down
+svg.addEventListener("mousedown", (e) => {
+  drawing = true;
+  const { x, y } = getSVGPoint(e);
+  startX = x;
+  startY = y;
+
+  if (tool === "pen") {
+    currentElement = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    currentElement.setAttribute("stroke", colorPicker.value);
+    currentElement.setAttribute("stroke-width", "3");
+    currentElement.setAttribute("fill", "none");
+    currentElement.setAttribute("d", `M ${x} ${y}`);
+  }
+
+  if (tool === "rect") {
+    currentElement = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    currentElement.setAttribute("stroke", colorPicker.value);
+    currentElement.setAttribute("fill", "transparent");
+  }
+
+  if (tool === "circle") {
+    currentElement = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    currentElement.setAttribute("stroke", colorPicker.value);
+    currentElement.setAttribute("fill", "transparent");
+  }
+
+  svg.appendChild(currentElement);
+  elements.push(currentElement);
+});
+
+// Mouse Move
+svg.addEventListener("mousemove", (e) => {
+  if (!drawing) return;
+
+  const { x, y } = getSVGPoint(e);
+
+  if (tool === "pen") {
+    const d = currentElement.getAttribute("d");
+    currentElement.setAttribute("d", `${d} L ${x} ${y}`);
+  }
+
+  if (tool === "rect") {
+    currentElement.setAttribute("x", Math.min(startX, x));
+    currentElement.setAttribute("y", Math.min(startY, y));
+    currentElement.setAttribute("width", Math.abs(x - startX));
+    currentElement.setAttribute("height", Math.abs(y - startY));
+  }
+
+  if (tool === "circle") {
+    const radius = Math.sqrt((x - startX) ** 2 + (y - startY) ** 2);
+    currentElement.setAttribute("cx", startX);
+    currentElement.setAttribute("cy", startY);
+    currentElement.setAttribute("r", radius);
+  }
+});
+
+// Stop Drawing
+svg.addEventListener("mouseup", () => drawing = false);
+svg.addEventListener("mouseleave", () => drawing = false);
+
+// Undo
+undoBtn.addEventListener("click", () => {
+  if (elements.length > 0) {
+    const last = elements.pop();
+    svg.removeChild(last);
+  }
+});
+</script>
+
+</body>
+</html>
